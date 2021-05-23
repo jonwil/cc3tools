@@ -1,0 +1,143 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winresrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winresrc.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (Australia) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENA)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_AUS
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_TOWGEN DIALOGEX 0, 0, 288, 159
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Theater Of War UI Generator"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_DESTINATION,7,17,147,14,ES_AUTOHSCROLL
+    LTEXT           "Folder to output new UI files into:",IDC_STATIC,7,7,109,8
+    PUSHBUTTON      "&Browse...",IDC_BROWSE,159,17,50,14
+    PUSHBUTTON      "&Generate",IDC_GENERATE,225,17,50,14
+    CONTROL         "GDI",IDC_GDI,"Button",BS_AUTORADIOBUTTON,7,42,28,10
+    CONTROL         "Scrin",IDC_SCRIN,"Button",BS_AUTORADIOBUTTON,7,63,30,10
+    CONTROL         "Nod",IDC_NOD,"Button",BS_AUTORADIOBUTTON,7,52,29,10
+    LTEXT           "Side to generate theater of war for:",IDC_STATIC,7,32,117,8
+    EDITTEXT        IDC_TOWNUM,47,53,100,14,ES_AUTOHSCROLL
+    LTEXT           "Theater Of War Number:",IDC_STATIC,47,44,81,8
+    LISTBOX         IDC_MISSIONLIST,7,80,120,72,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP
+    PUSHBUTTON      "&Add Mission",IDC_ADD,224,53,50,14
+    CONTROL         "Left",IDC_LEFT,"Button",BS_AUTORADIOBUTTON,133,95,29,10
+    CONTROL         "Right",IDC_RIGHT,"Button",BS_AUTORADIOBUTTON,169,95,33,10
+    LTEXT           "Mission Name Position:",IDC_STATIC,133,85,73,8
+    LTEXT           "Mission List:",IDC_STATIC,7,72,39,8
+    EDITTEXT        IDC_Y,218,123,63,14,ES_AUTOHSCROLL
+    LTEXT           "X",IDC_STATIC,137,126,8,8
+    LTEXT           "Y",IDC_STATIC,210,126,8,8
+    LTEXT           "Mission Frame:",IDC_STATIC,152,45,48,8
+    EDITTEXT        IDC_FRAME,151,53,63,14,ES_AUTOHSCROLL
+    LTEXT           "Mission Position:",IDC_STATIC,135,113,53,8
+    EDITTEXT        IDC_X,145,123,63,14,ES_AUTOHSCROLL
+    LTEXT           "Mission Morph Ratio:",IDC_STATIC,213,73,67,8
+    EDITTEXT        IDC_RATIO,212,82,63,14,ES_AUTOHSCROLL
+    LTEXT           "Mission Depth:",IDC_STATIC,214,96,48,8
+    EDITTEXT        IDC_DEPTH,212,104,63,14,ES_AUTOHSCROLL
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_TOWGEN, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 281
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 152
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_APP                 ICON                    "..\\cc3tools\\tib.ico"
+#endif    // English (Australia) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
