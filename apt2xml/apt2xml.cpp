@@ -350,10 +350,10 @@ int main(int argc, char* argv[])
 				case PLACEOBJECT:
 				{
 					OutputPlaceObject* po = (OutputPlaceObject*)m->frames[i].frameitems[j];
-					int alpha = LOBYTE(LOWORD(po->colortransform));
-					int blue = HIBYTE(LOWORD(po->colortransform));
-					int green = LOBYTE(HIWORD(po->colortransform));
-					int red = HIBYTE(HIWORD(po->colortransform));
+					int red = LOBYTE(LOWORD(po->colortransform));
+					int green = HIBYTE(LOWORD(po->colortransform));
+					int blue = LOBYTE(HIWORD(po->colortransform));
+					int alpha = HIBYTE(HIWORD(po->colortransform));
 					fprintf(xml, "\t\t\t\t<placeobject flags=\"%d\" depth=\"%d\" character=\"%d\" rotm00=\"%f\" rotm01=\"%f\" rotm10=\"%f\" rotm11=\"%f\" tx=\"%f\" ty=\"%f\" red=\"%d\" green=\"%d\" blue=\"%d\" alpha=\"%d\" ratio=\"%f\" clipdepth=\"%d\" unknown=\"%d\">\n", po->flags, po->depth, po->character, po->rotateandscale.m00, po->rotateandscale.m01, po->rotateandscale.m10, po->rotateandscale.m11, po->translate.X, po->translate.Y, red, green, blue, alpha, po->ratio, po->clipdepth, po->unknown);
 					if (po->name)
 					{
