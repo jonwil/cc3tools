@@ -382,6 +382,10 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 		size++;
 		p++;
 		break;
+	case EA_CALLFUNCTION:
+		size++;
+		p++;
+		break;
 	case EA_CALLFUNCTIONPOP:
 		size++;
 		size++;
@@ -866,6 +870,12 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 		size++;
 		(*stream) << c;
 		size++;
+		(*stream) << c;
+		size++;
+		p++;
+		break;
+	case EA_CALLFUNCTION:
+		c = 0x52;
 		(*stream) << c;
 		size++;
 		p++;
