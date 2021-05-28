@@ -389,7 +389,7 @@ Movie *GenerateApt(char *xmln)
 				entry->ToElement()->Attribute("green",&green);
 				entry->ToElement()->Attribute("blue",&blue);
 				entry->ToElement()->Attribute("alpha",&alpha);
-				sh->color = alpha | (blue * 0x100) | (green * 0x10000) | (red * 0x1000000);
+				sh->color = red | (green * 0x100) | (blue * 0x10000) | (alpha * 0x1000000);
 				entry->ToElement()->Attribute("height",&sh->fontheight);
 				entry->ToElement()->Attribute("readonly",&sh->readonly);
 				entry->ToElement()->Attribute("multiline",&sh->multiline);
@@ -596,7 +596,7 @@ Movie *GenerateApt(char *xmln)
 								entry4->ToElement()->Attribute("green",&green);
 								entry4->ToElement()->Attribute("blue",&blue);
 								entry4->ToElement()->Attribute("alpha",&alpha);
-								po->colortransform = alpha | (blue * 0x100) | (green * 0x10000) | (red * 0x1000000);
+								po->colortransform = red | (green * 0x100) | (blue * 0x10000) | (alpha * 0x1000000);
 								entry4->ToElement()->Attribute("ratio",&po->ratio);
 								entry4->ToElement()->Attribute("clipdepth",&po->clipdepth);
 								entry4->ToElement()->Attribute("unknown",&po->unknown);

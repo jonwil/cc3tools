@@ -421,10 +421,10 @@ int main(int argc, char* argv[])
 			case EDITTEXT:
 			{
 				EditText* et = (EditText*)m->characters[ch];
-				int alpha = LOBYTE(LOWORD(et->color));
-				int blue = HIBYTE(LOWORD(et->color));
-				int green = LOBYTE(HIWORD(et->color));
-				int red = HIBYTE(HIWORD(et->color));
+				int red = LOBYTE(LOWORD(et->color));
+				int green = HIBYTE(LOWORD(et->color));
+				int blue = LOBYTE(HIWORD(et->color));
+				int alpha = HIBYTE(HIWORD(et->color));
 				fprintf(xml, "\t<edittext id=\"%d\" top=\"%f\" left=\"%f\" bottom=\"%f\" right=\"%f\" font=\"%d\" alignment=\"%d\" red=\"%d\" green=\"%d\" blue=\"%d\" alpha=\"%d\" height=\"%f\" readonly=\"%d\" multiline=\"%d\" wordwrap=\"%d\">\n", ch, et->bounds.top, et->bounds.left, et->bounds.bottom, et->bounds.right, et->font, et->alignment, red, green, blue, alpha, et->fontheight, et->readonly, et->multiline, et->wordwrap);
 				if (et->text)
 				{
@@ -540,10 +540,10 @@ int main(int argc, char* argv[])
 							case PLACEOBJECT:
 							{
 								OutputPlaceObject* po = (OutputPlaceObject*)sp->frames[i].frameitems[j];
-								int alpha = LOBYTE(LOWORD(po->colortransform));
-								int blue = HIBYTE(LOWORD(po->colortransform));
-								int green = LOBYTE(HIWORD(po->colortransform));
-								int red = HIBYTE(HIWORD(po->colortransform));
+								int red = LOBYTE(LOWORD(po->colortransform));
+								int green = HIBYTE(LOWORD(po->colortransform));
+								int blue = LOBYTE(HIWORD(po->colortransform));
+								int alpha = HIBYTE(HIWORD(po->colortransform));
 								fprintf(xml, "\t\t\t<placeobject flags=\"%d\" depth=\"%d\" character=\"%d\" rotm00=\"%f\" rotm01=\"%f\" rotm10=\"%f\" rotm11=\"%f\" tx=\"%f\" ty=\"%f\" red=\"%d\" green=\"%d\" blue=\"%d\" alpha=\"%d\" ratio=\"%f\" clipdepth=\"%d\" unknown=\"%d\">\n", po->flags, po->depth, po->character, po->rotateandscale.m00, po->rotateandscale.m01, po->rotateandscale.m10, po->rotateandscale.m11, po->translate.X, po->translate.Y, red, green, blue, alpha, po->ratio, po->clipdepth, po->unknown);
 								if (po->name)
 								{
