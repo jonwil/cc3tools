@@ -342,13 +342,15 @@ struct Header {
 char **constantpool;
 char *cpdata;
 unsigned short cpcount;
-unsigned char globalconst;
+char globalconst;
+char thisconst;
 struct jump {
 	unsigned int jumppos;
 	unsigned char *jumpend;
 	short jumpval;
 };
 std::vector <jump> jumps;
+std::vector <int> labels;
 
 int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 {
@@ -384,6 +386,7 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 		break;
 	case EA_CALLFUNCTION:
 		size++;
+		size++;
 		p++;
 		break;
 	case EA_CALLFUNCTIONPOP:
@@ -393,6 +396,7 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 		break;
 	case EA_CALLMETHOD:
 		size++;
+		size++;
 		p++;
 		break;
 	case EA_CALLMETHODPOP:
@@ -401,12 +405,30 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 		p++;
 		break;
 	case EA_PUSHGLOBAL:
-		size++;
-		size++;
-		size++;
-		size++;
-		size++;
-		size++;
+		if (globalconst != -1)
+		{
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+		}
+		else
+		{
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+			size++;
+		}
 		p++;
 		break;
 	case EA_ZEROVARIABLE:
@@ -567,6 +589,7 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 			size++;
 			p++;
 			size++;
+			size++;
 		}
 		break;
 	case EA_CALLNAMEDMETHODPOP:
@@ -596,6 +619,7 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 			size++;
 			p++;
 			size++;
+			size++;
 		}
 		break;
 	case EA_PUSHFLOAT:
@@ -611,6 +635,10 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 			p++;
 			p++;
 			p++;
+			size++;
+			size++;
+			size++;
+			size++;
 			size++;
 			size++;
 			size++;
@@ -684,17 +712,30 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 		break;
 	case EA_PUSHTHIS:
 		{
-			p++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
-			size++;
+			if (thisconst != -1)
+			{
+				p++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+			}
+			else
+			{
+				p++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+				size++;
+			}
 		}
 		break;
 	case EA_GETSTRINGMEMBER:
@@ -761,6 +802,334 @@ int GetActionSize(action_type action,unsigned char *input,unsigned int *insize)
 	return size;
 }
 
+bool sizepush = false;
+int GetActionSizePush(action_type action, unsigned char* input, unsigned int* insize, unsigned int inpos)
+{
+	int size = 0;
+	unsigned char* p = input;
+	if (std::find(labels.begin(), labels.end(), inpos) != labels.end())
+	{
+		sizepush = false;
+	}
+	switch (action)
+	{
+	case ACTION_PUSHDATA:
+		{
+			p++;
+			unsigned short asize = *(unsigned short*)(p);
+			p++;
+			p++;
+			size += asize;
+			p += asize;
+			if (!sizepush)
+			{
+				sizepush = true;
+				size++;
+				size++;
+				size++;
+			}
+		}
+		break;
+	default:
+		sizepush = false;
+		size++;
+		p++;
+		if (action > 0x80)
+		{
+			unsigned short asize = *(unsigned short*)(p);
+			size++;
+			p++;
+			size++;
+			p++;
+			size += asize;
+			p += asize;
+		}
+		break;
+	}
+	*insize = (unsigned int)(p - input);
+	return size;
+}
+
+bool push = false;
+unsigned char pushsize = 0;
+int ConvertActionPush(action_type action, unsigned char* input, std::stringstream* stream, unsigned int* insize, unsigned int inpos)
+{
+	int size = 0;
+	unsigned char c = 0;
+	unsigned char* p = input;
+	if (std::find(labels.begin(), labels.end(), inpos) != labels.end())
+	{
+		if (pushsize)
+		{
+			(*stream).seekp(-(pushsize + 2), SEEK_CUR);
+			(*stream) << pushsize;
+			(*stream).seekp(0, SEEK_END);
+		}
+		push = false;
+		pushsize = 0;
+	}
+	for (unsigned int ji = 0; ji < jumps.size(); ji++)
+	{
+		if (p == jumps[ji].jumpend)
+		{
+			jumps[ji].jumpval = (*insize) - jumps[ji].jumppos - 2;
+		}
+	}
+	switch (action)
+	{
+	case ACTION_PUSHDATA:
+		{
+			if (!push)
+			{
+				c = 0x96;
+				(*stream) << c;
+				size++;
+				c = 0;
+				(*stream) << c;
+				size++;
+				c = 0;
+				(*stream) << c;
+				size++;
+			}
+			push = true;
+			p++;
+			unsigned short asize = *(unsigned short*)(p);
+			p++;
+			p++;
+			for (unsigned int i = 0; i < asize; i++)
+			{
+				(*stream) << (*p);
+				pushsize++;
+				size++;
+				p++;
+			}
+		}
+		break;
+	case ACTION_BRANCHALWAYS:
+	case ACTION_BRANCHIFTRUE:
+		{
+			if (pushsize)
+			{
+				(*stream).seekp(-(pushsize + 2), SEEK_CUR);
+				(*stream) << pushsize;
+				(*stream).seekp(0, SEEK_END);
+			}
+			push = false;
+			pushsize = 0;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			short jv = *(short*)(p);
+			if (jv < 0)
+			{
+				unsigned char* x = p;
+				x += jv;
+				x += 2;
+				int pos = inpos + size;
+				pos += jv;
+				pos += 2;
+				int loutsz = 0;
+				unsigned int linsz = 0;
+				sizepush = false;
+				for (unsigned char* i = x; i < p + 2;)
+				{
+					unsigned char cx = (*i);
+					loutsz += GetActionSizePush((action_type)cx, i, &linsz, pos);
+					i += linsz;
+					pos += linsz;
+				}
+				loutsz = -loutsz;
+				(*stream) << (LOBYTE(loutsz));
+				size++;
+				p++;
+				(*stream) << (HIBYTE(loutsz));
+				size++;
+				p++;
+			}
+			else
+			{
+				jump j;
+				j.jumppos = (*insize) + size;
+				j.jumpend = p + jv + 2;
+				j.jumpval = 0;
+				(*stream) << (*p);
+				size++;
+				p++;
+				(*stream) << (*p);
+				size++;
+				p++;
+				jumps.push_back(j);
+			}
+		}
+	break;
+	case ACTION_DEFINEFUNCTION:
+		{
+			if (pushsize)
+			{
+				(*stream).seekp(-(pushsize + 2), SEEK_CUR);
+				(*stream) << pushsize;
+				(*stream).seekp(0, SEEK_END);
+			}
+			push = false;
+			pushsize = 0;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			char fch = 0;
+			do
+			{
+				fch = (*p);
+				(*stream) << (*p);
+				size++;
+				p++;
+			} while (fch != 0);
+			unsigned short asize = *(unsigned short*)(p);
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			for (unsigned short i = 0; i < asize; i++)
+			{
+				do
+				{
+					fch = (*p);
+					(*stream) << (*p);
+					size++;
+					p++;
+				} while (fch != 0);
+			}
+			short jv = *(short*)(p);
+			jump j;
+			j.jumppos = (*insize) + size;
+			j.jumpend = p + jv + 2;
+			j.jumpval = 0;
+			jumps.push_back(j);
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+		}
+	break;
+	case ACTION_DEFINEFUNCTION2:
+		{
+			if (pushsize)
+			{
+				(*stream).seekp(-(pushsize + 2), SEEK_CUR);
+				(*stream) << pushsize;
+				(*stream).seekp(0, SEEK_END);
+			}
+			push = false;
+			pushsize = 0;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			char fch = 0;
+			do
+			{
+				fch = (*p);
+				(*stream) << (*p);
+				size++;
+				p++;
+			} while (fch != 0);
+			unsigned short asize = *(unsigned short*)(p);
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			for (unsigned short i = 0; i < asize; i++)
+			{
+				(*stream) << (*p);
+				size++;
+				p++;
+				do
+				{
+					fch = (*p);
+					(*stream) << (*p);
+					size++;
+					p++;
+				} while (fch != 0);
+			}
+			jump j;
+			short jv = *(short*)(p);
+			j.jumppos = (*insize) + size;
+			j.jumpend = p + jv + 2;
+			j.jumpval = 0;
+			jumps.push_back(j);
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+		}
+	break;
+	default:
+		if (pushsize)
+		{
+			(*stream).seekp(-(pushsize + 2), SEEK_CUR);
+			(*stream) << pushsize;
+			(*stream).seekp(0, SEEK_END);
+		}
+		push = false;
+		pushsize = 0;
+		(*stream) << (*p);
+		size++;
+		p++;
+		if (action > 0x80)
+		{
+			unsigned short asize = *(unsigned short*)(p);
+			(*stream) << (*p);
+			size++;
+			p++;
+			(*stream) << (*p);
+			size++;
+			p++;
+			for (unsigned int i = 0; i < asize; i++)
+			{
+				(*stream) << (*p);
+				size++;
+				p++;
+			}
+		}
+		break;
+	}
+	*insize = (unsigned int)(p - input);
+	return size;
+}
+
 int ConvertAction(action_type action,unsigned char *input,std::stringstream *stream,unsigned int *insize)
 {
 	int size = 0;
@@ -770,7 +1139,8 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 	{
 		if (p == jumps[ji].jumpend)
 		{
-			jumps[ji].jumpval = (*insize) - (jumps[ji].jumppos + 2);
+			jumps[ji].jumpval = (*insize) - jumps[ji].jumppos - 2;
+			labels.push_back(*insize);
 		}
 	}
 	switch (action)
@@ -802,9 +1172,13 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			for (unsigned int i = 0;i < cpcount;i++)
 			{
 				constantpool[i] = cpdatax;
-				if (!_stricmp(cpdatax,"_global"))
+				if (!_stricmp(cpdatax, "_global"))
 				{
 					globalconst = i;
+				}
+				if (!_stricmp(cpdatax, "this"))
+				{
+					thisconst = i;
 				}
 				cpdatax += strlen(cpdatax);
 				cpdatax++;
@@ -875,7 +1249,10 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 		p++;
 		break;
 	case EA_CALLFUNCTION:
-		c = 0x52;
+		c = 0x3D;
+		(*stream) << c;
+		size++;
+		c = 0x1D;
 		(*stream) << c;
 		size++;
 		p++;
@@ -893,6 +1270,9 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 		c = 0x52;
 		(*stream) << c;
 		size++;
+		c = 0x1D;
+		(*stream) << c;
+		size++;
 		p++;
 		break;
 	case EA_CALLMETHODPOP:
@@ -905,23 +1285,68 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 		p++;
 		break;
 	case EA_PUSHGLOBAL:
-		c = 0x96;
-		(*stream) << c;
-		size++;
-		c = 0x02;
-		(*stream) << c;
-		size++;
-		c = 0x00;
-		(*stream) << c;
-		size++;
-		c = 0x08;
-		(*stream) << c;
-		size++;
-		(*stream) << globalconst;
-		size++;
-		c = 0x1C;
-		(*stream) << c;
-		size++;
+		if (globalconst != -1)
+		{
+			c = 0x96;
+			(*stream) << c;
+			size++;
+			c = 0x02;
+			(*stream) << c;
+			size++;
+			c = 0x00;
+			(*stream) << c;
+			size++;
+			c = 0x08;
+			(*stream) << c;
+			size++;
+			(*stream) << globalconst;
+			size++;
+			c = 0x1C;
+			(*stream) << c;
+			size++;
+		}
+		else
+		{
+			c = 0x96;
+			(*stream) << c;
+			size++;
+			c = 0x09;
+			(*stream) << c;
+			size++;
+			c = 0x00;
+			(*stream) << c;
+			size++;
+			c = 0x00;
+			(*stream) << c;
+			size++;
+			c = 0x5F;
+			(*stream) << c;
+			size++;
+			c = 0x67;
+			(*stream) << c;
+			size++;
+			c = 0x6C;
+			(*stream) << c;
+			size++;
+			c = 0x6F;
+			(*stream) << c;
+			size++;
+			c = 0x62;
+			(*stream) << c;
+			size++;
+			c = 0x61;
+			(*stream) << c;
+			size++;
+			c = 0x6C;
+			(*stream) << c;
+			size++;
+			c = 0x00;
+			(*stream) << c;
+			size++;
+			c = 0x1C;
+			(*stream) << c;
+			size++;
+		}
 		p++;
 		break;
 	case EA_ZEROVARIABLE:
@@ -1235,7 +1660,10 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			c = 0x3D;
 			(*stream) << c;
 			size++;
-		}
+			c = 0x1D;
+			(*stream) << c;
+			size++;
+	    }
 		break;
 	case EA_CALLNAMEDMETHOD:
 		{
@@ -1259,6 +1687,9 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			size++;
 			p++;
 			c = 0x52;
+			(*stream) << c;
+			size++;
+			c = 0x1D;
 			(*stream) << c;
 			size++;
 		}
@@ -1300,31 +1731,35 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			c = 0x96;
 			(*stream) << c;
 			size++;
-			c = 0x05;
+			c = 0x09;
 			(*stream) << c;
 			size++;
 			c = 0x00;
 			(*stream) << c;
 			size++;
-			c = 0x01;
+			c = 0x06;
 			(*stream) << c;
 			size++;
-			unsigned char byte = (*p);
-			(*stream) << byte;
+			float f = *(float*)(p);
+			double d = f;
+			p += 4;
+			unsigned char* dp = (unsigned char*)&d;
+			(*stream) << dp[4];
 			size++;
-			p++;
-			byte = (*p);
-			(*stream) << byte;
+			(*stream) << dp[5];
 			size++;
-			p++;
-			byte = (*p);
-			(*stream) << byte;
+			(*stream) << dp[6];
 			size++;
-			p++;
-			byte = (*p);
-			(*stream) << byte;
+			(*stream) << dp[7];
 			size++;
-			p++;
+			(*stream) << dp[0];
+			size++;
+			(*stream) << dp[1];
+			size++;
+			(*stream) << dp[2];
+			size++;
+			(*stream) << dp[3];
+			size++;
 		}
 		break;
 	case EA_PUSHREGISTER:
@@ -1367,16 +1802,16 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			c = 0x07;
 			(*stream) << c;
 			size++;
-			unsigned char byte = (*p);
-			(*stream) << byte;
-			size++;
+			int i = *(char *)(p);
+			unsigned char* cp = (unsigned char*)&i;
 			p++;
-			c = 0x00;
-			(*stream) << c;
+			(*stream) << cp[0];
 			size++;
-			(*stream) << c;
+			(*stream) << cp[1];
 			size++;
-			(*stream) << c;
+			(*stream) << cp[2];
+			size++;
+			(*stream) << cp[3];
 			size++;
 		}
 		break;
@@ -1397,18 +1832,17 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 			c = 0x07;
 			(*stream) << c;
 			size++;
-			unsigned char byte = (*p);
-			(*stream) << byte;
-			size++;
+			int i = *(short*)(p);
+			unsigned char* cp = (unsigned char*)&i;
 			p++;
-			byte = (*p);
-			(*stream) << byte;
-			size++;
 			p++;
-			c = 0x00;
-			(*stream) << c;
+			(*stream) << cp[0];
 			size++;
-			(*stream) << c;
+			(*stream) << cp[1];
+			size++;
+			(*stream) << cp[2];
+			size++;
+			(*stream) << cp[3];
 			size++;
 		}
 		break;
@@ -1480,6 +1914,7 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 				(*stream) << (HIBYTE(loutsz));
 				size++;
 				p++;
+				labels.push_back((*insize) + size + loutsz);
 			}
 			else
 			{
@@ -1499,37 +1934,61 @@ int ConvertAction(action_type action,unsigned char *input,std::stringstream *str
 		break;
 	case EA_PUSHTHIS:
 		{
-			p++;
-			c = 0x96;
-			(*stream) << c;
-			size++;
-			c = 0x06;
-			(*stream) << c;
-			size++;
-			c = 0x00;
-			(*stream) << c;
-			size++;
-			c = 0x00;
-			(*stream) << c;
-			size++;
-			c = 0x74;
-			(*stream) << c;
-			size++;
-			c = 0x68;
-			(*stream) << c;
-			size++;
-			c = 0x69;
-			(*stream) << c;
-			size++;
-			c = 0x73;
-			(*stream) << c;
-			size++;
-			c = 0x00;
-			(*stream) << c;
-			size++;
-			c = 0x1C;
-			(*stream) << c;
-			size++;
+			if (thisconst != -1)
+			{
+				p++;
+				c = 0x96;
+				(*stream) << c;
+				size++;
+				c = 0x02;
+				(*stream) << c;
+				size++;
+				c = 0x00;
+				(*stream) << c;
+				size++;
+				c = 0x08;
+				(*stream) << c;
+				size++;
+				(*stream) << thisconst;
+				size++;
+				c = 0x1C;
+				(*stream) << c;
+				size++;
+			}
+			else
+			{
+				p++;
+				c = 0x96;
+				(*stream) << c;
+				size++;
+				c = 0x06;
+				(*stream) << c;
+				size++;
+				c = 0x00;
+				(*stream) << c;
+				size++;
+				c = 0x00;
+				(*stream) << c;
+				size++;
+				c = 0x74;
+				(*stream) << c;
+				size++;
+				c = 0x68;
+				(*stream) << c;
+				size++;
+				c = 0x69;
+				(*stream) << c;
+				size++;
+				c = 0x73;
+				(*stream) << c;
+				size++;
+				c = 0x00;
+				(*stream) << c;
+				size++;
+				c = 0x1C;
+				(*stream) << c;
+				size++;
+			}
 		}
 		break;
 	case EA_GETSTRINGMEMBER:
@@ -1935,13 +2394,50 @@ int main(int argc, char* argv[])
 				p++;
 			}
 			action_type action;
+			std::stringstream astream;
+			globalconst = -1;
+			thisconst = -1;
+			unsigned int asize = 0;
 			do
 			{
 				action = (action_type)(*p);
-				unsigned int sz = size;
-				size += ConvertAction(action,p,&stream,&sz);
+				unsigned int sz = asize;
+				asize += ConvertAction(action,p,&astream,&sz);
 				p += sz;
 			} while (action != ACTION_END);
+			std::string astr = astream.str();
+			const char* ac = astr.c_str();
+			unsigned char* pp = (unsigned char*)ac;
+			for (unsigned int ji = 0; ji < jumps.size(); ji++)
+			{
+				memcpy((void*)&(pp[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+			}
+			jumps.clear();
+			std::stringstream pstream;
+			unsigned int psize = 0;
+			push = false;
+			pushsize = 0;
+			for (unsigned int a = 0; a < asize;)
+			{
+				action = (action_type)(*pp);
+				unsigned int sz = psize;
+				psize += ConvertActionPush(action, pp, &pstream, &sz, a);
+				pp += sz;
+				a += sz;
+			}
+			std::string pcstr = pstream.str();
+			const char* pcs = pcstr.c_str();
+			for (unsigned int ji = 0; ji < jumps.size(); ji++)
+			{
+				memcpy((void*)&(pcs[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+			}
+			jumps.clear();
+			labels.clear();
+			for (unsigned int i = 0; i < psize; i++)
+			{
+				stream << pcs[i];
+				size++;
+			}
 			unsigned short outtag;
 			unsigned short ot;
 			if (tag == DOACTION)
@@ -1975,11 +2471,6 @@ int main(int argc, char* argv[])
 			}
 			std::string str = stream.str();
 			const char *cs = str.c_str();
-			for (unsigned int ji = 0;ji < jumps.size();ji++)
-			{
-				memcpy((void *)&(cs[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-			}
-			jumps.clear();
 			for (unsigned int i = 0;i < size;i++)
 			{
 				streamf << cs[i];
@@ -2118,13 +2609,50 @@ int main(int argc, char* argv[])
 						p++;
 					}
 					action_type action;
-					for (unsigned int a = 0;a < recsize;)
+					std::stringstream astream;
+					unsigned int asize = 0;
+					globalconst = -1;
+					thisconst = -1;
+					for (unsigned int a = 0; a < recsize;)
 					{
 						action = (action_type)(*p);
-						unsigned int sz = sizea;
-						sizea += ConvertAction(action,p,&streama,&sz);
+						unsigned int sz = asize;
+						asize += ConvertAction(action, p, &astream, &sz);
 						p += sz;
 						a += sz;
+					}
+					std::string astr = astream.str();
+					const char* ac = astr.c_str();
+					unsigned char* pp = (unsigned char*)ac;
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pp[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					std::stringstream pstream;
+					unsigned int psize = 0;
+					push = false;
+					pushsize = 0;
+					for (unsigned int a = 0; a < asize;)
+					{
+						action = (action_type)(*pp);
+						unsigned int sz = psize;
+						psize += ConvertActionPush(action, pp, &pstream, &sz, a);
+						pp += sz;
+						a += sz;
+					}
+					std::string pcstr = pstream.str();
+					const char* pcs = pcstr.c_str();
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pcs[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					labels.clear();
+					for (unsigned int i = 0; i < psize; i++)
+					{
+						streama << pcs[i];
+						sizea++;
 					}
 					stream << LOBYTE(LOWORD(sizea));
 					stream << HIBYTE(LOWORD(sizea));
@@ -2133,11 +2661,6 @@ int main(int argc, char* argv[])
 					size += 4;
 					std::string arstr = streama.str();
 					const char *ars = arstr.c_str();
-					for (unsigned int ji = 0;ji < jumps.size();ji++)
-					{
-						memcpy((void *)&(ars[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-					}
-					jumps.clear();
 					for (unsigned int i = 0;i < sizea;i++)
 					{
 						stream << ars[i];
@@ -2171,11 +2694,6 @@ int main(int argc, char* argv[])
 			}
 			std::string str = stream.str();
 			const char *cs = str.c_str();
-			for (unsigned int ji = 0;ji < jumps.size();ji++)
-			{
-				memcpy((void *)&(cs[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-			}
-			jumps.clear();
 			for (unsigned int i = 0;i < size;i++)
 			{
 				streamf << cs[i];
@@ -2255,27 +2773,60 @@ int main(int argc, char* argv[])
 				{
 					offset = *(unsigned short *)(p);
 					unsigned short sizea = 0;
-					unsigned int a = 0;
 					std::stringstream streama;
 					p++;
 					p++;
 					streama << (*p);
 					sizea++;
 					p++;
-					a++;
 					streama << (*p);
 					sizea++;
 					p++;
-					a++;
 					action_type action;
+					std::stringstream astream;
+					globalconst = -1;
+					thisconst = -1;
+					unsigned int asize = 0;
 					do
 					{
 						action = (action_type)(*p);
-						unsigned int sz = sizea;
-						sizea += ConvertAction(action,p,&streama,&sz);
+						unsigned int sz = asize;
+						asize += ConvertAction(action, p, &astream, &sz);
 						p += sz;
-						a += sz;
 					} while (action != ACTION_END);
+					std::string astr = astream.str();
+					const char* ac = astr.c_str();
+					unsigned char* pp = (unsigned char*)ac;
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pp[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					std::stringstream pstream;
+					unsigned int psize = 0;
+					push = false;
+					pushsize = 0;
+					for (unsigned int a = 0; a < asize;)
+					{
+						action = (action_type)(*pp);
+						unsigned int sz = psize;
+						psize += ConvertActionPush(action, pp, &pstream, &sz, a);
+						pp += sz;
+						a += sz;
+					}
+					std::string pcstr = pstream.str();
+					const char* pcs = pcstr.c_str();
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pcs[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					labels.clear();
+					for (unsigned int i = 0; i < psize; i++)
+					{
+						streama << pcs[i];
+						sizea++;
+					}
 					if (offset)
 					{
 						sizea += 2;
@@ -2292,11 +2843,6 @@ int main(int argc, char* argv[])
 					size += 2;
 					std::string arstr = streama.str();
 					const char *ars = arstr.c_str();
-					for (unsigned int ji = 0;ji < jumps.size();ji++)
-					{
-						memcpy((void *)&(ars[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-					}
-					jumps.clear();
 					for (unsigned int i = 0;i < sizea;i++)
 					{
 						stream << ars[i];
@@ -2384,13 +2930,50 @@ int main(int argc, char* argv[])
 						p++;
 					}
 					action_type action;
+					std::stringstream astream;
+					globalconst = -1;
+					thisconst = -1;
+					unsigned int asize = 0;
 					do
 					{
 						action = (action_type)(*p);
-						unsigned int sz = size;
-						size += ConvertAction(action,p,&stream,&sz);
+						unsigned int sz = asize;
+						asize += ConvertAction(action, p, &astream, &sz);
 						p += sz;
 					} while (action != ACTION_END);
+					std::string astr = astream.str();
+					const char* ac = astr.c_str();
+					unsigned char* pp = (unsigned char*)ac;
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pp[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					std::stringstream pstream;
+					unsigned int psize = 0;
+					push = false;
+					pushsize = 0;
+					for (unsigned int a = 0; a < asize;)
+					{
+						action = (action_type)(*pp);
+						unsigned int sz = psize;
+						psize += ConvertActionPush(action, pp, &pstream, &sz, a);
+						pp += sz;
+						a += sz;
+					}
+					std::string pcstr = pstream.str();
+					const char* pcs = pcstr.c_str();
+					for (unsigned int ji = 0; ji < jumps.size(); ji++)
+					{
+						memcpy((void*)&(pcs[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+					}
+					jumps.clear();
+					labels.clear();
+					for (unsigned int i = 0; i < psize; i++)
+					{
+						stream << pcs[i];
+						size++;
+					}
 					unsigned short outtag;
 					unsigned short ot;
 					if (s_tag == DOACTION)
@@ -2424,11 +3007,6 @@ int main(int argc, char* argv[])
 					}
 					std::string str = stream.str();
 					const char *cs = str.c_str();
-					for (unsigned int ji = 0;ji < jumps.size();ji++)
-					{
-						memcpy((void *)&(cs[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-					}
-					jumps.clear();
 					for (unsigned int i = 0;i < size;i++)
 					{
 						streams << cs[i];
@@ -2567,13 +3145,50 @@ int main(int argc, char* argv[])
 								p++;
 							}
 							action_type action;
-							for (unsigned int a = 0;a < recsize;)
+							std::stringstream astream;
+							unsigned int asize = 0;
+							globalconst = -1;
+							thisconst = -1;
+							for (unsigned int a = 0; a < recsize;)
 							{
 								action = (action_type)(*p);
-								unsigned int sz = sizea;
-								sizea += ConvertAction(action,p,&streama,&sz);
+								unsigned int sz = asize;
+								asize += ConvertAction(action, p, &astream, &sz);
 								p += sz;
 								a += sz;
+							}
+							std::string astr = astream.str();
+							const char* ac = astr.c_str();
+							unsigned char* pp = (unsigned char*)ac;
+							for (unsigned int ji = 0; ji < jumps.size(); ji++)
+							{
+								memcpy((void*)&(pp[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+							}
+							jumps.clear();
+							std::stringstream pstream;
+							unsigned int psize = 0;
+							push = false;
+							pushsize = 0;
+							for (unsigned int a = 0; a < asize;)
+							{
+								action = (action_type)(*pp);
+								unsigned int sz = psize;
+								psize += ConvertActionPush(action, pp, &pstream, &sz, a);
+								pp += sz;
+								a += sz;
+							}
+							std::string pcstr = pstream.str();
+							const char* pcs = pcstr.c_str();
+							for (unsigned int ji = 0; ji < jumps.size(); ji++)
+							{
+								memcpy((void*)&(pcs[jumps[ji].jumppos]), &(jumps[ji].jumpval), 2);
+							}
+							jumps.clear();
+							labels.clear();
+							for (unsigned int i = 0; i < psize; i++)
+							{
+								streama << pcs[i];
+								sizea++;
 							}
 							stream << LOBYTE(LOWORD(sizea));
 							stream << HIBYTE(LOWORD(sizea));
@@ -2582,11 +3197,6 @@ int main(int argc, char* argv[])
 							size += 4;
 							std::string arstr = streama.str();
 							const char *ars = arstr.c_str();
-							for (unsigned int ji = 0;ji < jumps.size();ji++)
-							{
-								memcpy((void *)&(ars[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-							}
-							jumps.clear();
 							for (unsigned int i = 0;i < sizea;i++)
 							{
 								stream << ars[i];
@@ -2620,11 +3230,6 @@ int main(int argc, char* argv[])
 					}
 					std::string str = stream.str();
 					const char *cs = str.c_str();
-					for (unsigned int ji = 0;ji < jumps.size();ji++)
-					{
-						memcpy((void *)&(cs[jumps[ji].jumppos]),&(jumps[ji].jumpval),2);
-					}
-					jumps.clear();
 					for (unsigned int i = 0;i < size;i++)
 					{
 						streams << cs[i];
