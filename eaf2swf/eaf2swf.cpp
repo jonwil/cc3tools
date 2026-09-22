@@ -2321,7 +2321,7 @@ unsigned int read_color_transform_alpha_size(unsigned char *p)
 
 int main(int argc, char* argv[])
 {
-	FILE *f = fopen(argv[1],"rb");
+	FILE *f = fopen(argv[5],"rb");
 	if (!f)
 	{
 		return 1;
@@ -2369,10 +2369,12 @@ int main(int argc, char* argv[])
 		unsigned int hl = 2;
 		tag = (tag_type)(tag_header >> 6);
 		unsigned int tag_length = tag_header & 0x3F;
+		bool writelong = false;
 		if (tag_length == 0x3F)
 		{
 			tag_length = *(unsigned int *)(p + 2);
 			hl += 4;
+			writelong = true;
 		}
 		if ((tag == DOACTION) || (tag == INITACTION))
 		{
@@ -2448,7 +2450,7 @@ int main(int argc, char* argv[])
 			{
 				ot = 0xEC0;
 			}
-			if (size >= 63)
+			if (size >= 63 || writelong)
 			{
 				outtag = ot + 0x3F;
 				streamf << LOBYTE(outtag);
@@ -2671,7 +2673,7 @@ int main(int argc, char* argv[])
 			unsigned short outtag;
 			unsigned short ot;
 			ot = 0x680;
-			if (size >= 63)
+			if (size >= 63 || writelong)
 			{
 				outtag = ot + 0x3F;
 				streamf << LOBYTE(outtag);
@@ -2853,7 +2855,7 @@ int main(int argc, char* argv[])
 			unsigned short outtag;
 			unsigned short ot;
 			ot = 0x880;
-			if (size >= 63)
+			if (size >= 63 || writelong)
 			{
 				outtag = ot + 0x3F;
 				streamf << LOBYTE(outtag);
@@ -2904,11 +2906,13 @@ int main(int argc, char* argv[])
 				unsigned short s_tag_header = *(unsigned short *)(p);
 				unsigned int s_hl = 2;
 				s_tag = (tag_type)(s_tag_header >> 6);
+				bool swritelong = true;
 				unsigned int s_tag_length = s_tag_header & 0x3F;
 				if (s_tag_length == 0x3F)
 				{
 					s_tag_length = *(unsigned int *)(p + 2);
 					s_hl += 4;
+					swritelong = true;
 				}
 				if ((s_tag == DOACTION) || (s_tag == INITACTION))
 				{
@@ -2984,7 +2988,7 @@ int main(int argc, char* argv[])
 					{
 						ot = 0xEC0;
 					}
-					if (size >= 63)
+					if (size >= 63 || swritelong)
 					{
 						outtag = ot + 0x3F;
 						streams << LOBYTE(outtag);
@@ -3207,7 +3211,7 @@ int main(int argc, char* argv[])
 					unsigned short outtag;
 					unsigned short ot;
 					ot = 0x680;
-					if (size >= 63)
+					if (size >= 63 || swritelong)
 					{
 						outtag = ot + 0x3F;
 						streams << LOBYTE(outtag);
